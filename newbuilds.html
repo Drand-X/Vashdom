@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Новостройки и Дома ИЖС — АН «Ваш Дом»</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <header class="bg-white shadow-sm sticky top-0 z-40 border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <a href="index.html" class="font-extrabold text-slate-900 text-lg">🏠 Ваш Дом</a>
+            <nav class="flex space-x-5 text-sm font-medium">
+                <a href="index.html">Главная</a>
+                <a href="catalog.html">Наши объекты</a>
+                <a href="newbuilds.html" class="text-blue-600 font-bold">Новостройки и Дома ИЖС</a>
+                <a href="admin.html">⚙️ Админка</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+        <section class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+            <div class="flex flex-col md:flex-row justify-between gap-4 border-b border-slate-100 pb-6">
+                <div>
+                    <span class="bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full">Комфорт-класс • IV квартал 2026</span>
+                    <h1 class="text-3xl font-extrabold text-slate-900 mt-2">ЖК «Солнечный» — от 5 200 000 ₽</h1>
+                    <p class="text-xs text-slate-500 mt-1">Застройщик: ГК «СтройИнвест» • 📍 г. Москва, ул. Лесная, д. 12</p>
+                </div>
+                <div class="bg-slate-900 text-white p-4 rounded-2xl">
+                    <span class="text-[10px] uppercase text-blue-300 font-bold block">Единый телефон агентства</span>
+                    <p class="text-lg font-extrabold">📞 +7 (999) 123-45-67</p>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                    <h2 class="text-xl font-extrabold text-slate-900">Схема дома (Подъезды и статус квартир)</h2>
+                    <div class="flex gap-4 text-xs font-bold">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Свободно</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-rose-400 inline-block"></span> Занято</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-slate-300 inline-block"></span> Не в продаже</span>
+                    </div>
+                </div>
+                <div id="chess-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            </div>
+        </section>
+
+        <section id="houses-ijs" class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+            <h2 class="text-2xl font-extrabold text-slate-900 mb-2">Раздел «Дома» (Предложения ИЖС)</h2>
+            <p class="text-xs text-slate-500 mb-6">Управляется вручную через админку. Единый телефон для связи с отделом загородной недвижимости: <b>+7 (999) 123-45-67</b></p>
+            <div id="ijs-box" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            let html = '';
+            for (let p = 1; p <= 4; p++) {
+                html += `<div class="bg-slate-50 p-3 rounded-xl border border-slate-200"><p class="text-xs font-bold text-center mb-2">Подъезд ${p}</p><div class="space-y-1">`;
+                for (let f = 4; f >= 1; f--) {
+                    html += `<div class="grid grid-cols-4 gap-1">`;
+                    for (let k = 1; k <= 4; k++) {
+                        const num = (p - 1) * 16 + (f - 1) * 4 + k;
+                        const mod = num % 5;
+                        const cls = mod === 0 ? 'bg-rose-400 text-white' : (mod === 2 ? 'bg-slate-300 text-slate-600' : 'bg-emerald-500 text-white');
+                        html += `<button onclick="alert('Квартира №${num}, ${(k%3)+1}-комн., 8 900 000 ₽')" class="h-7 rounded text-xs font-bold ${cls}">${(k%3)+1}</button>`;
+                    }
+                    html += `</div>`;
+                }
+                html += `</div></div>`;
+            }
+            document.getElementById('chess-grid').innerHTML = html;
+
+            const db = getDB();
+            document.getElementById('ijs-box').innerHTML = db.housesIjs.map(h => `
+                <div class="border border-slate-200 rounded-2xl p-5">
+                    <span class="text-xs font-bold text-emerald-600">${h.offerType}</span>
+                    <h3 class="text-lg font-extrabold text-slate-900 mt-1">${h.title} — ${h.priceRange}</h3>
+                    <p class="text-xs text-slate-500 mt-1">📍 ${h.region}, ${h.address}</p>
+                    <p class="text-xs text-slate-600 mt-2">Участок: <b>${h.plotArea}</b> • Дом: <b>${h.houseArea}</b> • Коммуникации: <b>${h.communications}</b></p>
+                    <p class="text-xs text-slate-500 mt-2">${h.description}</p>
+                </div>
+            `).join('');
+        });
+    </script>
+</body>
+</html>

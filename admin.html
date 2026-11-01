@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Административная панель — АН «Ваш Дом»</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased">
+
+    <header class="bg-slate-900 text-white py-4 px-6 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <span class="font-extrabold text-lg">⚙️ Админ-панель «Ваш Дом»</span>
+            <a href="index.html" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg">&larr; Вернуться на сайт</a>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+            <span>Текущая роль:</span>
+            <select id="admin-role" onchange="applyRolePermissions()" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 font-bold text-blue-300">
+                <option value="admin">Администратор (Полный доступ)</option>
+                <option value="manager">Менеджер (Объекты CRM и обращения MAX)</option>
+                <option value="editor">Редактор (Блог, Услуги, Новостройки, ИЖС, Отзывы)</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-8">
+        <section id="sec-crm" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                <div>
+                    <h2 class="text-xl font-extrabold text-slate-900">1. Автоматический и тестовый XML-импорт из CRM</h2>
+                    <p class="text-xs text-slate-500">Идентификация по <code>offer/@internal-id</code>. Телефон агента из <code>sales-agent/phone</code>. Ручное редактирование объектов запрещено.</p>
+                </div>
+                <span class="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1.5 rounded-lg">
+                    Последний успешный импорт: <span id="last-import-date"></span>
+                </span>
+            </div>
+            <textarea id="xml-input" rows="5" class="w-full font-mono text-xs p-3 rounded-xl border border-slate-200 bg-slate-50"><realty-feed>
+  <phone>+7 (495) 000-00-00</phone>
+  <offer internal-id="CRM-100451">
+    <category>Вторичные</category>
+    <rooms>2</rooms>
+    <area><value>56</value></area>
+    <living-space><value>32</value></living-space>
+    <kitchen-space><value>10</value></kitchen-space>
+    <price><value>12100000</value></price>
+    <floor>4</floor><floors-total>12</floors-total>
+    <location><locality-name>Москва</locality-name><district>САО, район Лесной</district><address>ул. Лесная, д. 12</address></location>
+    <sales-agent><name>Екатерина Соколова</name><phone>+7 (999) 123-45-67</phone></sales-agent>
+  </offer>
+</realty-feed></textarea>
+            <div class="mt-3 flex flex-wrap gap-3">
+                <button onclick="runXmlImport(false)" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl">Запустить импорт XML (Полное обновление)</button>
+                <button onclick="runXmlImport(true)" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl">Симулировать ошибку выгрузки (Проверка защиты)</button>
+            </div>
+            <div id="crm-objects-table" class="mt-4 overflow-x-auto text-xs"></div>
+        </section>
+
+        <section id="sec-agents" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                <div>
+                    <h2 class="text-xl font-extrabold text-slate-900">2. Управление агентами и статусами</h2>
+                    <p class="text-xs text-slate-500">При удалении агента его объекты скрываются, а отзывы остаются в общем списке.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="massToggleAgents('isCertified', true)" class="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Проставить «Аттестован» всем</button>
+                    <button onclick="massToggleAgents('isInsured', true)" class="bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-lg">Проставить «Застрахован» всем</button>
+                </div>
+            </div>
+            <div id="admin-agents-list" class="space-y-2 text-xs"></div>
+        </section>
+
+        <section id="sec-content" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div id="reviews-sec" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <h2 class="text-lg font-extrabold text-slate-900 mb-3">3. Модерация отзывов</h2>
+                <div id="admin-reviews-list" class="space-y-3 text-xs"></div>
+            </div>
+            <div id="blog-sec" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <h2 class="text-lg font-extrabold text-slate-900 mb-3">4. Управление статьями Блога и SEO</h2>
+                <div id="admin-blog-list" class="space-y-3 text-xs"></div>
+            </div>
+        </section>
+
+        <section id="sec-leads" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+            <h2 class="text-lg font-extrabold text-slate-900 mb-3">5. Входящие обращения и маршрутизация в MAX</h2>
+            <div id="admin-leads-list" class="space-y-2 text-xs"></div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+        function applyRolePermissions() {
+            const role = document.getElementById('admin-role').value;
+            document.getElementById('sec-crm').style.display = (role === 'admin' || role === 'manager') ? 'block' : 'none';
+            document.getElementById('sec-leads').style.display = (role === 'admin' || role === 'manager') ? 'block' : 'none';
+            document.getElementById('sec-agents').style.display = (role === 'admin') ? 'block' : 'none';
+            document.getElementById('sec-content').style.display = (role === 'admin' || role === 'editor') ? 'grid' : 'none';
+        }
+
+        function runXmlImport(simulateError) {
+            const db = getDB();
+            if (simulateError) {
+                alert("Ошибка выгрузки XML! Предыдущие объекты на сайте сохранены, полное затирание отменено.");
+                return;
+            }
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(document.getElementById('xml-input').value, "text/xml");
+            const offers = xmlDoc.querySelectorAll("offer");
+            if (!offers.length) {
+                alert("Некорректный XML — сохранены предыдущие объекты.");
+                return;
+            }
+            const newObjects = [];
+            offers.forEach((of, idx) => {
+                const intId = of.getAttribute("internal-id");
+                const agentPhone = of.querySelector("sales-agent > phone")?.textContent || "";
+                const matchedAgent = db.agents.find(a => a.phone === agentPhone) || db.agents[1];
+                newObjects.push({
+                    id: "obj-xml-" + idx, internalId: intId, updatedAt: new Date().toLocaleString('ru-RU'),
+                    published: true, category: of.querySelector("category")?.textContent || "Вторичные",
+                    homeTypeFilter: "Квартира", dealType: "Продажа", rooms: parseInt(of.querySelector("rooms")?.textContent || "2"),
+                    areaTotal: parseFloat(of.querySelector("area > value")?.textContent || "56"),
+                    areaLiving: parseFloat(of.querySelector("living-space > value")?.textContent || "32"),
+                    areaKitchen: parseFloat(of.querySelector("kitchen-space > value")?.textContent || "10"),
+                    floor: parseInt(of.querySelector("floor")?.textContent || "4"), floorsTotal: parseInt(of.querySelector("floors-total")?.textContent || "12"),
+                    price: parseFloat(of.querySelector("price > value")?.textContent || "12000000"),
+                    city: of.querySelector("location > locality-name")?.textContent || "Москва", region: "Московская область",
+                    district: of.querySelector("location > district")?.textContent || "САО",
+                    street: of.querySelector("location > address")?.textContent || "ул. Лесная, д. 12", apartment: "",
+                    buildingType: "Монолитно-кирпичный", parking: "Есть", elevator: "Есть", communications: "Интернет, ТВ", yearBuilt: 2022,
+                    renovation: "Евроремонт", balcony: "Лоджия", bathroom: "Раздельный", agentId: matchedAgent.id,
+                    images: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1000&q=80"],
+                    description: "Объект обновлен из файловой выгрузки CRM."
+                });
+            });
+            db.objects = newObjects;
+            db.settings.lastXmlImportDate = new Date().toLocaleString('ru-RU');
+            saveDB(db);
+            renderAdmin();
+            alert("Импорт из CRM успешно выполнен! Новостройки и Дома ИЖС не затронуты.");
+        }
+
+        function massToggleAgents(field, val) {
+            const db = getDB();
+            db.agents.forEach(a => a[field] = val);
+            saveDB(db);
+            renderAdmin();
+        }
+
+        function toggleSingleAgent(id, field) {
+            const db = getDB();
+            const a = db.agents.find(x => x.id === id);
+            if (a) a[field] = !a[field];
+            saveDB(db);
+            renderAdmin();
+        }
+
+        function deleteAgent(id) {
+            const db = getDB();
+            db.agents = db.agents.filter(a => a.id !== id);
+            saveDB(db);
+            renderAdmin();
+        }
+
+        function toggleReviewStatus(id) {
+            const db = getDB();
+            const r = db.reviews.find(x => x.id === id);
+            if (r) r.status = r.status === 'Опубликован' ? 'На модерации' : 'Опубликован';
+            saveDB(db);
+            renderAdmin();
+        }
+
+        function toggleBlogStatus(id) {
+            const db = getDB();
+            const p = db.blog.find(x => x.id === id);
+            if (p) p.status = p.status === 'Опубликовано' ? 'Черновик' : 'Опубликовано';
+            saveDB(db);
+            renderAdmin();
+        }
+
+        function renderAdmin() {
+            const db = getDB();
+            document.getElementById('last-import-date').textContent = db.settings.lastXmlImportDate;
+
+            document.getElementById('crm-objects-table').innerHTML = db.objects.map(o => `
+                <div class="flex justify-between py-2 border-b border-slate-100">
+                    <span><b>offer/@internal-id: ${o.internalId}</b> — ${getObjectTitle(o)} (${formatPrice(o.price)})</span>
+                    <span class="text-slate-400">Обновлено: ${o.updatedAt} | Статус: Опубликован</span>
+                </div>
+            `).join('');
+
+            document.getElementById('admin-agents-list').innerHTML = db.agents.map(a => `
+                <div class="flex flex-wrap justify-between items-center p-2.5 bg-slate-50 rounded-xl border border-slate-200 gap-2">
+                    <span><b>${a.name}</b> (${a.role}) • ${a.phone} • ${a.statusType}</span>
+                    <div class="flex gap-2">
+                        <button onclick="toggleSingleAgent('${a.id}', 'isCertified')" class="px-2.5 py-1 rounded font-bold ${a.isCertified ? 'bg-emerald-600 text-white' : 'bg-slate-200'}">Аттестован: ${a.isCertified ? 'Да' : 'Нет'}</button>
+                        <button onclick="toggleSingleAgent('${a.id}', 'isInsured')" class="px-2.5 py-1 rounded font-bold ${a.isInsured ? 'bg-amber-500 text-white' : 'bg-slate-200'}">Застрахован: ${a.isInsured ? 'Да' : 'Нет'}</button>
+                        <button onclick="deleteAgent('${a.id}')" class="px-2.5 py-1 rounded bg-rose-100 text-rose-700 font-bold">Удалить (скрыть объекты)</button>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('admin-reviews-list').innerHTML = db.reviews.map(r => `
+                <div class="p-3 rounded-xl border border-slate-200 flex justify-between items-center gap-3">
+                    <div><b>${r.author}</b> (${r.status}): «${r.text}»</div>
+                    <button onclick="toggleReviewStatus('${r.id}')" class="px-3 py-1.5 rounded-lg font-bold flex-shrink-0 ${r.status === 'Опубликован' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-600 text-white'}">
+                        ${r.status === 'Опубликован' ? 'Снять с публикации' : 'Одобрить и опубликовать'}
+                    </button>
+                </div>
+            `).join('');
+
+            document.getElementById('admin-blog-list').innerHTML = db.blog.map(p => `
+                <div class="p-3 rounded-xl border border-slate-200 flex justify-between items-center gap-3">
+                    <div><b>${p.title}</b><br><span class="text-slate-400">URL: /${p.slug} • Статус: ${p.status}</span></div>
+                    <button onclick="toggleBlogStatus('${p.id}')" class="px-3 py-1.5 rounded-lg font-bold flex-shrink-0 bg-blue-600 text-white">
+                        ${p.status === 'Опубликовано' ? 'В черновик' : 'Опубликовать'}
+                    </button>
+                </div>
+            `).join('');
+
+            document.getElementById('admin-leads-list').innerHTML = db.leads.length ? db.leads.map(l => `
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <b>${l.date}</b> — ${l.name} (${l.phone}) • Действие: <b>${l.action}</b> • Источник: <b>${l.source}</b><br>
+                    <span class="text-blue-600 font-semibold">Маршрут MAX: ${l.route}</span>
+                </div>
+            `).join('') : '<p class="text-slate-400">Заявок пока нет. Отправьте тестовую заявку с любой страницы сайта.</p>';
+        }
+
+        document.addEventListener("DOMContentLoaded", renderAdmin);
+    </script>
+</body>
+</html>

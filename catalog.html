@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Наши объекты и Команда — АН «Ваш Дом»</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { colors: { brand: { 50: '#eff6ff', 600: '#1d4ed8', 700: '#1e40af' } } } } }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <header class="bg-white shadow-sm sticky top-0 z-40 border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <a href="index.html" class="font-extrabold text-slate-900 text-lg">🏠 Ваш Дом</a>
+            <nav class="hidden md:flex space-x-5 text-sm font-medium">
+                <a href="index.html">Главная</a>
+                <a href="catalog.html" class="text-brand-600 font-bold">Наши объекты</a>
+                <a href="newbuilds.html">Новостройки и Дома</a>
+                <a href="#team-sec">Наша команда</a>
+                <a href="admin.html">⚙️ Админ-панель</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-14">
+        <section id="object-detail-view" class="hidden bg-white rounded-3xl p-6 sm:p-8 border border-brand-200 shadow-lg"></section>
+
+        <section>
+            <h1 class="text-3xl font-extrabold text-slate-900 mb-4">Каталог объектов (Единый поиск по республике)</h1>
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                <select id="cf-cat" onchange="filterCatalog()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                    <option value="">Все категории</option>
+                    <option value="Вторичные">Вторичные</option>
+                    <option value="Новостройки">Новостройки</option>
+                    <option value="Дома">Дома</option>
+                    <option value="Бани">Бани</option>
+                </select>
+                <input type="number" id="cf-pmin" oninput="filterCatalog()" placeholder="Цена от, ₽" class="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                <input type="number" id="cf-pmax" oninput="filterCatalog()" placeholder="Цена до, ₽" class="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                <input type="number" id="cf-amin" oninput="filterCatalog()" placeholder="Площадь от, м²" class="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                <select id="cf-rooms" onchange="filterCatalog()" class="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                    <option value="">Комнат: Все</option>
+                    <option value="1">1 комн.</option>
+                    <option value="2">2 комн.</option>
+                    <option value="3">3+ комн.</option>
+                </select>
+                <select id="cf-sort" onchange="filterCatalog()" class="px-3 py-2 rounded-xl border border-brand-600 text-xs font-bold">
+                    <option value="asc">Цена: по возрастанию ↑</option>
+                    <option value="desc">Цена: по убыванию ↓</option>
+                </select>
+            </div>
+            <p class="text-xs text-slate-500 mt-3">Найдено объектов: <b id="cf-count">0</b></p>
+            <div id="catalog-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-4"></div>
+            <div id="cf-empty" class="hidden bg-white p-8 rounded-2xl text-center border border-slate-200 mt-4 font-bold text-slate-600">
+                Объекты не найдены. Попробуйте ослабить параметры фильтрации.
+            </div>
+        </section>
+
+        <section id="team-sec" class="pt-8 border-t border-slate-200">
+            <h2 class="text-2xl font-extrabold text-slate-900 mb-2">Наша команда (Руководитель &rarr; Агенты &rarr; Юристы &rarr; Администраторы)</h2>
+            <p class="text-xs text-slate-500 mb-6">Нажмите на карточку сотрудника для открытия его личной страницы с профилем и документами</p>
+            <div id="team-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"></div>
+            <div id="agent-detail-view" class="hidden mt-8 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-lg"></div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+        function filterCatalog() {
+            const db = getDB();
+            const activeAgents = new Set(db.agents.map(a => a.id));
+            let list = db.objects.filter(o => o.published && (!o.agentId || activeAgents.has(o.agentId)));
+            const cat = document.getElementById('cf-cat').value;
+            const pmin = parseFloat(document.getElementById('cf-pmin').value) || 0;
+            const pmax = parseFloat(document.getElementById('cf-pmax').value) || Infinity;
+            const amin = parseFloat(document.getElementById('cf-amin').value) || 0;
+            const rooms = document.getElementById('cf-rooms').value;
+            const sort = document.getElementById('cf-sort').value;
+
+            if (cat) list = list.filter(o => o.category === cat);
+            list = list.filter(o => o.price >= pmin && o.price <= pmax && o.areaTotal >= amin);
+            if (rooms === '1') list = list.filter(o => o.rooms === 1);
+            if (rooms === '2') list = list.filter(o => o.rooms === 2);
+            if (rooms === '3') list = list.filter(o => o.rooms >= 3);
+
+            list.sort((a, b) => sort === 'asc' ? a.price - b.price : b.price - a.price);
+            document.getElementById('cf-count').textContent = list.length;
+            document.getElementById('catalog-list').innerHTML = list.map(renderObjectCard).join('');
+            document.getElementById('cf-empty').classList.toggle('hidden', list.length > 0);
+        }
+
+        function showObjectDetail(id) {
+            const db = getDB();
+            const o = db.objects.find(x => x.id === id);
+            if (!o) return;
+            const ag = db.agents.find(a => a.id === o.agentId) || db.agents[0];
+            const box = document.getElementById('object-detail-view');
+            box.classList.remove('hidden');
+            box.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-2xl font-extrabold text-slate-900">${getObjectTitle(o)} — ${formatPrice(o.price)}</h2>
+                    <button onclick="document.getElementById('object-detail-view').classList.add('hidden')" class="text-xs text-slate-500">✕ Закрыть</button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <img src="${o.images[0]}" class="w-full h-64 object-cover rounded-2xl">
+                    <div class="text-xs space-y-1.5">
+                        <p class="font-bold text-slate-900 text-sm mb-2">Характеристики и О доме:</p>
+                        <p>📍 Адрес: <b>${o.region}, г. ${o.city}, ${o.district}, ${o.street} ${o.apartment}</b></p>
+                        <p>📐 Площадь: <b>Общая ${o.areaTotal} м² / Жилая ${o.areaLiving} м² / Кухня ${o.areaKitchen} м²</b></p>
+                        <p>🏢 Этаж: <b>${o.floor} из ${o.floorsTotal}</b> • Тип дома: <b>${o.buildingType}</b></p>
+                        <p>🛗 Лифт: <b>${o.elevator}</b> • 🅿️ Парковка: <b>${o.parking}</b> • 📡 Связь: <b>${o.communications}</b></p>
+                        <p>🖌️ Ремонт: <b>${o.renovation}</b> • Балкон: <b>${o.balcony}</b> • Санузел: <b>${o.bathroom}</b></p>
+                        <p class="text-slate-600 pt-2">${o.description}</p>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col justify-between">
+                        <div>
+                            <p class="text-[11px] text-slate-400 uppercase font-bold">Ответственный агент</p>
+                            <p class="font-bold text-base text-slate-900 mt-1">${ag.name}</p>
+                            <p class="text-xs text-slate-500">${ag.roleLabel} • 📞 ${ag.phone}</p>
+                            <button onclick="showAgentDetail('${ag.id}')" class="mt-2 text-xs font-bold text-brand-600 underline">Перейти на личную страницу агента &rarr;</button>
+                        </div>
+                        <button onclick="handleLeadSubmit('Клиент', prompt('Введите телефон для связи с агентом:'), 'По объекту ${o.internalId}', 'Детальная объекта', '${ag.id}')" class="mt-4 w-full bg-brand-600 text-white text-xs font-bold py-3 rounded-xl">Связаться с агентом в MAX</button>
+                    </div>
+                </div>
+            `;
+            box.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showAgentDetail(id) {
+            const db = getDB();
+            const ag = db.agents.find(a => a.id === id);
+            if (!ag) return;
+            const pubDocs = (ag.documents || []).filter(d => d.isPublic);
+            const agObjs = db.objects.filter(o => o.published && o.agentId === ag.id);
+            const box = document.getElementById('agent-detail-view');
+            box.classList.remove('hidden');
+            box.innerHTML = `
+                <div class="flex flex-col md:flex-row justify-between gap-6">
+                    <div class="flex gap-5 items-center">
+                        <img src="${ag.photo}" class="w-28 h-32 rounded-2xl object-cover">
+                        <div>
+                            <h3 class="text-2xl font-extrabold text-slate-900">${ag.name}</h3>
+                            <p class="text-xs text-slate-500">${ag.roleLabel} • 📞 ${ag.phone}</p>
+                            <div class="flex flex-wrap gap-2 mt-3">
+                                ${ag.isCertified ? '<span class="bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-lg">✓ Аттестованный</span>' : ''}
+                                ${ag.isInsured ? '<span class="bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-lg">✓ Застрахованный</span>' : ''}
+                                <span class="bg-sky-600 text-white text-xs font-bold px-3 py-1 rounded-lg">${ag.statusType}</span>
+                            </div>
+                            <p class="text-xs text-slate-600 mt-3 max-w-xl">${ag.bio}</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 min-w-[260px]">
+                        <p class="font-bold text-xs text-slate-900 mb-2">Публичные документы агента:</p>
+                        ${pubDocs.length ? pubDocs.map(d => `<div class="text-xs py-1 border-b border-slate-200">📄 ${d.title} (${d.size})</div>`).join('') : '<p class="text-xs text-slate-400">Нет открытых документов</p>'}
+                        <button onclick="handleLeadSubmit('Клиент', prompt('Ваш телефон:'), 'Запрос агенту ${ag.name}', 'Страница агента', '${ag.id}')" class="mt-4 w-full bg-brand-600 text-white text-xs font-bold py-2.5 rounded-xl">Написать в MAX (${ag.hasMax ? 'Прямой' : 'Общий чат'})</button>
+                    </div>
+                </div>
+            `;
+            box.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            filterCatalog();
+            const db = getDB();
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('view')) showObjectDetail(params.get('view'));
+
+            const roleOrder = { "Руководитель": 1, "Специалист по недвижимости": 2, "Юрист": 3, "Администратор": 4 };
+            const sortedAgents = [...db.agents].sort((a, b) => (roleOrder[a.role] || 9) - (roleOrder[b.role] || 9));
+            document.getElementById('team-list').innerHTML = sortedAgents.map(a => `
+                <div onclick="showAgentDetail('${a.id}')" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md cursor-pointer transition flex items-center gap-3.5">
+                    <img src="${a.photo}" class="w-16 h-16 rounded-xl object-cover">
+                    <div>
+                        <span class="text-[10px] font-bold text-brand-600 uppercase">${a.role}</span>
+                        <h4 class="font-bold text-slate-900 text-sm">${a.name}</h4>
+                        <p class="text-xs text-slate-500">${a.roleLabel}</p>
+                    </div>
+                </div>
+            `).join('');
+        });
+    </script>
+</body>
+</html>
